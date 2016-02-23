@@ -1,0 +1,25 @@
+{
+  "name": "blindfish-simple-web",
+  "version": "0.0.1",
+  "description": "dev setup for simple web pages",
+  "main": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ben@blindfish.co.uk",
+  "license": "MIT",
+  "devDependencies": {
+    "vinyl-source-stream": "^1.1.0",
+    "browser-sync": "^2.11.1",
+    "del": "^2.2.0",
+    "jshint": "^2.9.1",
+    "jshint-stylish": "^2.1.0",
+    "node-sass": "^3.4.2",
+    "gulp": "^3.9.1",
+    "gulp-changed": "^1.3.0",
+    "gulp-jade": "^1.1.0",
+    "gulp-jshint": "^2.0.0",
+    "gulp-sass": "^2.2.0",
+    "gulp-sourcemaps": "^1.6.0"
+  }
+}

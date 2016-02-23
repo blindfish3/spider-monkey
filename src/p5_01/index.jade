@@ -1,0 +1,23 @@
+extends ../_templates/_p5js.jade
+block pageVars
+    - var titleHead = "p5js - dev"
+    - var titlePage = "An example..."
+    
+block append localVars
+    //- the following can be uncommented if you want to override any options
+    //- - var p5version = "0.2.20"
+    //- - var p5DOM = true
+    //- - var p5Sound = true
+    
+block append head
+    link(href='local.css', rel='stylesheet')
+
+block sources
+    //- add links to additional source files here:
+    a(href="linkToSource.js") my source file
+
+//- load your own additional scripts here.
+//- Note that js/sketch.js is asumed and already loaded from the template
+block prepend scripts
+
+block append scripts

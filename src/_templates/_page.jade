@@ -1,0 +1,24 @@
+block pageVars
+    -var titleHead = "default site title"
+    -var titlePage = "default page title"
+
+block localVars
+
+doctype html
+html(lang="en")
+  head
+    title #{titleHead}
+    block head
+
+  body
+    header
+        block header
+            h1 #{titlePage}
+    main
+        block main
+        
+    footer
+        block footer
+
+
+    block scripts

@@ -1,0 +1,25 @@
+extends ../_templates/_p5js.jade
+block pageVars
+    - var titleHead = "blindfish spider-monkey demo"
+    - var titlePage = "p5 - browserify and SASS"
+block append localVars
+    //- The following can be uncommented if you want to override any 
+    //- of the default options already set in the template:
+    //- - var p5version = "0.2.20"
+    //- - var loadP5DOM = true
+    //- - var loadP5Sound = true
+    
+block append head
+    link(href='local.css', rel='stylesheet')
+
+block sources
+    //- add links to additional source files here:
+    //- a(href="linkToSource.js") my source file
+    //- TODO: automate copying and linking to any source files
+
+//- load your own additional scripts here.
+//- Note that js/sketch.js is assumed to exist and is already loaded
+//- from the template
+block prepend scripts
+
+block append scripts

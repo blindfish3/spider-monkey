@@ -6,8 +6,8 @@ block pageVars
 
 block localVars
     - var p5version = "0.4.22"
-    - var p5DOM = false
-    - var p5Sound = false
+    - var loadP5DOM = false
+    - var loadP5Sound = false
 
 
 block head
@@ -22,8 +22,8 @@ block main
 block scripts
     script(src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/" + p5version + "/p5.js")
     
-    if p5DOM
+    if loadP5DOM
         script(src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/" + p5version + "/addons/p5.dom.js")
-    if p5Sound
+    if loadP5Sound
         script(src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/" + p5version + "/addons/p5.sound.js")
     script(src="js/sketch.js") 

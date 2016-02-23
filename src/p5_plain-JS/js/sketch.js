@@ -13,8 +13,8 @@ var myp5 = new p5(function (p) {
 
     p.draw = function () {
         // just to shoe that something is happening
-        p.background('#c10');
-        p.ellipse(p.width/2, p.height/2, 200,200);
+        p.background('#39d');
+        p.ellipse(p.width/2, p.height/2, 300,300);
     };
 
     // p.mousePressed = function () {

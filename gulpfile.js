@@ -63,7 +63,7 @@ gulp.task('lint', function() {
     return gulp.src([SRC + '/**/*.js',
                     //exclude JS files handled by browserify
                     '!' + SRC + '/**/_lib',
-                    '!' + SRC + '/**/bify_**.js',
+                    '!' + SRC + '/**/main_**.js',
                     '!' + SRC + '/**/_*.js'])
         .pipe(changed(DEST))
         .pipe(jshint())

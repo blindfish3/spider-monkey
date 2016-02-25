@@ -5,7 +5,10 @@ var b = {},
 b.log = require('../../_lib/_log');
 
 // Stop p5js polluting the global namespace by using instance mode
-var myp5 = new p5(function (p) {
+// assigning to a *single* global variable using Browserify's 'global'
+// ...in this context an alias to window
+//TODO: consider the wisdom of overwriting the p5 variable
+global.P$ = new p5(function (p) {
 
     var c;
 
@@ -33,3 +36,5 @@ var myp5 = new p5(function (p) {
     // };
 
 }, "sketch01");
+console.info("after");
+console.info(p5);

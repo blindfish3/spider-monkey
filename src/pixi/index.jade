@@ -1,0 +1,20 @@
+extends ../_templates/_pixijs.jade
+block pageVars
+    - var titleHead = "blindfish simple web dev environment demo"
+    - var titlePage = "pixijs - browserify and SASS"
+block append localVars
+    
+block append head
+    link(href='local.css', rel='stylesheet')
+
+block sources
+    //- add links to additional source files here:
+    //- a(href="linkToSource.js") my source file
+    //- TODO: automate copying and linking to any source files
+
+//- load your own additional scripts here.
+//- Note that js/sketch.js is assumed to exist and is already loaded
+//- from the template
+block prepend scripts
+
+block append scripts

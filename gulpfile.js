@@ -1,24 +1,31 @@
 // - - - - - DEPENDENCIES - - - - - //
 var gulp    = require('gulp');
-var changed = require('gulp-changed');//TODO: test this requirement
+
 var gutil   = require('gulp-util');
 var notify  = require('gulp-notify');
-var jade    = require('gulp-jade');
-var sass    = require('gulp-sass');
+var del     = require('del');
 var sourcemaps = require("gulp-sourcemaps");
 var source  = require('vinyl-source-stream');
+var buffer = require('vinyl-buffer');
+var globby = require('globby');
+var rename  = require('gulp-rename');
+var es      = require('event-stream');
+
+var jade    = require('gulp-jade');
+var sass    = require('gulp-sass');
+var cleanCSS = require('gulp-clean-css');
+
 var jshint  = require('gulp-jshint');
 var browserify = require('browserify');
-var rename  = require('gulp-rename');
-var glob    = require('glob');
-var es      = require('event-stream');
-var del     = require('del');
+// var uglify  = require('gulp-uglify');
+
 var browserSync = require('browser-sync').create();
 
 // - - - - - VARIABLES - - - - - //
 var reload  = browserSync.reload;
 var SRC = './src';
-var DEST = './dist';
+var DIST = './dist';
+var TEST = './test';
 
 // - - - - - HELPERS - - - - - //
 //SOURCE: mlouro/gulpfile.js - https://gist.github.com/mlouro/8886076
@@ -36,7 +43,7 @@ var handleError = function(task) {
 
 // - - - - - TASKS - - - - - //
 gulp.task('clean', function(callback) {
-    del([DEST + '/**']).then(function() {
+    del([TEST + '/**', DIST + '/**']).then(function() {
         callback();
     });
 });
@@ -52,8 +59,7 @@ gulp.task('assets', function() {
                     '!' + SRC + '/**/*.scss',
                     '!' + SRC + '/**/_templates',
                     '!' + SRC + '/**/*.jade'])
-  .pipe(changed(DEST))
-  .pipe(gulp.dest(DEST))
+  .pipe(gulp.dest(TEST))
   .pipe(browserSync.stream());
 });
 
@@ -65,46 +71,64 @@ gulp.task('lint', function() {
                     '!' + SRC + '/**/_lib',
                     '!' + SRC + '/**/main_**.js',
                     '!' + SRC + '/**/_*.js'])
-        .pipe(changed(DEST))
         .pipe(jshint())
         .pipe(jshint.reporter('jshint-stylish'))
-        .pipe(gulp.dest(DEST))
+        .pipe(gulp.dest(TEST))
         .pipe(browserSync.stream());
 })
 
+gulp.task('browserify', function (done) {
 
+  globby([SRC + '/**/main_**.js']).then(function(entries) {
 
-gulp.task('browserify', function() {
+      var tasks = entries.map(function(entry) {
 
-    //TODO: add sourcemaps
-    // see: http://sethlakowske.com/articles/gulp-browserify-source-maps/
+          var entryAsString = String(entry);
+          var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length-3));
 
-    //SOURCE: Gulp: Creating multiple bundles with Browserify
-    //        http://fettblog.eu/gulp-browserify-multiple-bundles/#using-globs
-    glob(SRC + '/**/main_**.js', function(err, files) {
-            if(err) done(err);
-
-            var tasks = files.map(function(entry) {
-                return browserify({ entries: [entry] })
-                    .bundle()
-                    .on('error', handleError('browserify'))
-                    .pipe(source(entry))
-                    .pipe(rename(function(path) {
-                        // TODO: replacing pathname like this seems crude - particularly
-                        // since it doesn't use the SRC variable
-                        path.dirname = path.dirname.replace('src/', '');
-                        path.basename = path.basename.replace('main_', '');
-                    }))
-                    .pipe(gulp.dest('./dist'))
-                    .pipe(browserSync.stream());
-                });
-            //TODO: figure out what this does :/
-            // es.merge(tasks).on('end', done);
+        return browserify({
+          entries: entry,
+          debug: true,
+          // for standalone to work you need to feed it
+          // the desired (unique!) global identifier
+          standalone: filename
         })
+        .bundle()
+        .on('error', handleError('browserify'))
+        .pipe(source(entry))
+        .pipe(rename(function(path) {
+            // TODO: replacing pathname like this seems crude - particularly
+            // since it doesn't use the SRC variable
+            path.dirname = path.dirname.replace('src/', '');
+            path.basename = path.basename.replace('main_', '');
+        }))
+        .pipe(buffer())
+        .pipe(sourcemaps.init({loadMaps: true}))
+          // Add gulp plugins to the pipeline here.
+        .pipe(sourcemaps.write('./'))
+        .pipe(gulp.dest(TEST))
+        .pipe(browserSync.stream());
 
+    });
+
+    es.merge(tasks).on('end', done);
+
+
+  }).catch(function(err) {
+    handleError('browserify')
+  });
 
 });
 
+//TODO gulp-uglify install failed - check dependencies and retry.
+// gulp.task('uglify', ['browserify'], function() {
+//   return gulp.src(BUILD + '/js/bufi.js')
+//     .pipe(uglify({output: {comments: /^!|@preserve|@license|@cc_on/i}}))
+//     .pipe(rename(function(path) {
+//         path.basename = path.basename.replace(/(.min)?.js/, '.min.js');
+//     }))
+//     .pipe(gulp.dest(DIST));
+// });
 
 
 // using templates will make it easier to ensure consistency
@@ -114,12 +138,13 @@ gulp.task('browserify', function() {
 gulp.task('templates', function() {
     //TODO: avoid processing pages that haven't changed
     return gulp.src(['./src/**/*.jade', '!./src/_templates/**' ])
-        .pipe(changed(DEST))
-        .pipe(jade({pretty: true}))
+        .pipe(jade({
+            pretty: true,
+            basedir: './tests/_templates'
+        }))
         //TODO: fix this: reports errors, but doesn't allow watch task to continue
         .on('error', handleError('jade'))
-        .pipe(gulp.dest(DEST))
-        //TODO: is this proper usage?
+        .pipe(gulp.dest(TEST))
         .pipe(browserSync.stream());
 });
 
@@ -133,14 +158,24 @@ gulp.task('sass', function() {
 
   return gulp.src(SRC + '/**/*.scss')
     .pipe(sourcemaps.init())
-    .pipe(changed(DEST))
-    .pipe(sass().on('error', sass.logError))
+    .pipe(sass({
+        // outputStyle: 'compressed',
+        includePaths : ['./_vendor']
+    }).on('error', sass.logError))
     .pipe(sourcemaps.write())
-    .pipe(gulp.dest(DEST))
+    .pipe(gulp.dest(TEST))
     .pipe(browserSync.stream());
 
 });
 
+
+gulp.task('minify-css', function() {
+  return gulp.src(TEST + '/**/*.css')
+    .pipe(cleanCSS({compatibility: 'ie9'}))
+    .pipe(gulp.dest(DIST));
+});
+
+// gulp.task('build', ['uglify', 'minify-css']);
 
 
 // before serving content ensure it's all been built by running all tasks as devDependencies
@@ -151,7 +186,7 @@ gulp.task('serve',
 
           browserSync.init({
             server: {
-              baseDir: DEST,
+              baseDir: TEST,
               directory: true // displays navigable directory structure
             },
             ghostmode: {

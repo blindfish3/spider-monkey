@@ -125,7 +125,7 @@ gulp.task('browserify', function (done) {
 //   return gulp.src(BUILD + '/js/bufi.js')
 //     .pipe(uglify({output: {comments: /^!|@preserve|@license|@cc_on/i}}))
 //     .pipe(rename(function(path) {
-//         path.basename = path.basename.replace(/(.min)?.js/, '.min.js');
+//         path.basename = path.basename += '.min';
 //     }))
 //     .pipe(gulp.dest(DIST));
 // });
@@ -172,6 +172,9 @@ gulp.task('sass', function() {
 gulp.task('minify-css', function() {
   return gulp.src(TEST + '/**/*.css')
     .pipe(cleanCSS({compatibility: 'ie9'}))
+    .pipe(rename(function(path) {
+        path.basename += '.min';
+    }))
     .pipe(gulp.dest(DIST));
 });
 
@@ -204,7 +207,6 @@ gulp.task('serve',
           gulp.watch(SRC + "/**/*.js", ['lint', 'browserify']);
 
 });
-
 
 
 gulp.task('default', ['serve']);

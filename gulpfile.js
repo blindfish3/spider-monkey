@@ -17,7 +17,8 @@ var cleanCSS = require('gulp-clean-css');
 
 var jshint  = require('gulp-jshint');
 var browserify = require('browserify');
-// var uglify  = require('gulp-uglify');
+var watchify = require('watchify');
+var uglify  = require('gulp-uglify');
 
 var browserSync = require('browser-sync').create();
 
@@ -77,6 +78,8 @@ gulp.task('lint', function() {
         .pipe(browserSync.stream());
 })
 
+
+
 gulp.task('browserify', function (done) {
 
   globby([SRC + '/**/main_**.js']).then(function(entries) {
@@ -86,13 +89,14 @@ gulp.task('browserify', function (done) {
           var entryAsString = String(entry);
           var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length-3));
 
-        return browserify({
+
+        return watchify(browserify({
           entries: entry,
           debug: true,
           // for standalone to work you need to feed it
           // the desired (unique!) global identifier
           standalone: filename
-        })
+        }))
         .bundle()
         .on('error', handleError('browserify'))
         .pipe(source(entry))
@@ -111,7 +115,9 @@ gulp.task('browserify', function (done) {
 
     });
 
-    es.merge(tasks).on('end', done);
+    es.merge(tasks)
+    .on('update', reload)
+    .on('end', done);
 
 
   }).catch(function(err) {
@@ -120,15 +126,18 @@ gulp.task('browserify', function (done) {
 
 });
 
-//TODO gulp-uglify install failed - check dependencies and retry.
-// gulp.task('uglify', ['browserify'], function() {
-//   return gulp.src(BUILD + '/js/bufi.js')
-//     .pipe(uglify({output: {comments: /^!|@preserve|@license|@cc_on/i}}))
-//     .pipe(rename(function(path) {
-//         path.basename = path.basename += '.min';
-//     }))
-//     .pipe(gulp.dest(DIST));
-// });
+
+
+// Note that any final build process relies on content of /TEST being up-to-date
+gulp.task('uglify', ['browserify'], function() {
+  return gulp.src(TEST + '/**/*.js')
+    .pipe(uglify({output: {comments: /^!|@preserve|@license|@cc_on/i}}))
+    .pipe(rename(function(path) {
+        path.basename = path.basename += '.min';
+    }))
+    .pipe(gulp.dest(DIST));
+});
+
 
 
 // using templates will make it easier to ensure consistency
@@ -160,13 +169,14 @@ gulp.task('sass', function() {
     .pipe(sourcemaps.init())
     .pipe(sass({
         // outputStyle: 'compressed',
-        includePaths : ['./_vendor']
+        //includePaths : ['./_vendor']
     }).on('error', sass.logError))
     .pipe(sourcemaps.write())
     .pipe(gulp.dest(TEST))
     .pipe(browserSync.stream());
 
 });
+
 
 
 gulp.task('minify-css', function() {
@@ -178,7 +188,10 @@ gulp.task('minify-css', function() {
     .pipe(gulp.dest(DIST));
 });
 
+
+
 // gulp.task('build', ['uglify', 'minify-css']);
+
 
 
 // before serving content ensure it's all been built by running all tasks as devDependencies
@@ -204,7 +217,8 @@ gulp.task('serve',
           gulp.watch(SRC + "/**/*.css", ['assets']);
           gulp.watch(SRC + "/**/*.jade",  ['jade-watch']);
           gulp.watch(SRC + "/**/*.scss", ['sass']);
-          gulp.watch(SRC + "/**/*.js", ['lint', 'browserify']);
+          gulp.watch(SRC + "/**/*.js", ['lint']);
+          gulp.watch(SRC + "/**/*.js", ['browserify']);
 
 });
 

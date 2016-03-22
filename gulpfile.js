@@ -1,28 +1,28 @@
 // - - - - - DEPENDENCIES - - - - - //
-var gulp    = require('gulp');
+var gulp = require('gulp');
 
-var gutil   = require('gulp-util');
-var notify  = require('gulp-notify');
-var del     = require('del');
+var gutil = require('gulp-util');
+var notify = require('gulp-notify');
+var del = require('del');
 var sourcemaps = require("gulp-sourcemaps");
-var source  = require('vinyl-source-stream');
+var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var globby = require('globby');
-var rename  = require('gulp-rename');
-var es      = require('event-stream');
+var rename = require('gulp-rename');
+var es = require('event-stream');
 
-var jade    = require('gulp-jade');
-var sass    = require('gulp-sass');
+var jade = require('gulp-jade');
+var sass = require('gulp-sass');
 var cleanCSS = require('gulp-clean-css');
 
-var jshint  = require('gulp-jshint');
+var jshint = require('gulp-jshint');
 var browserify = require('browserify');
-var uglify  = require('gulp-uglify');
+var uglify = require('gulp-uglify');
 
 var browserSync = require('browser-sync').create();
 
 // - - - - - VARIABLES - - - - - //
-var reload  = browserSync.reload;
+var reload = browserSync.reload;
 var SRC = './src';
 var DIST = './dist';
 var TEST = './test';
@@ -30,14 +30,14 @@ var TEST = './test';
 // - - - - - HELPERS - - - - - //
 //SOURCE: mlouro/gulpfile.js - https://gist.github.com/mlouro/8886076
 var handleError = function(task) {
-  return function(err) {
+    return function(err) {
 
-      notify.onError({
-        message: task + ' failed, check the logs..'
-      })(err);
+        notify.onError({
+            message: task + ' failed, check the logs..'
+        })(err);
 
-    gutil.log(gutil.colors.bgRed(task + ' error:'), gutil.colors.red(err));
-  };
+        gutil.log(gutil.colors.bgRed(task + ' error:'), gutil.colors.red(err));
+    };
 };
 
 
@@ -53,24 +53,26 @@ gulp.task('clean', function(callback) {
 // Perform a direct copy of all assets;
 // excluding anything to be handled by other tasks...
 gulp.task('assets', function() {
-  return gulp.src([SRC + '/**/*',
-                    '!' + SRC + '/**/_lib',
-                    '!' + SRC + '/**/*.js',
-                    '!' + SRC + '/**/*.scss',
-                    '!' + SRC + '/**/_templates',
-                    '!' + SRC + '/**/*.jade'])
-  .pipe(gulp.dest(TEST))
-  .pipe(browserSync.stream());
+    return gulp.src([SRC + '/**/*',
+            '!' + SRC + '/**/_lib',
+            '!' + SRC + '/**/*.js',
+            '!' + SRC + '/**/*.scss',
+            '!' + SRC + '/**/_templates',
+            '!' + SRC + '/**/*.jade'
+        ])
+        .pipe(gulp.dest(TEST))
+        .pipe(browserSync.stream());
 });
 
 
 
 gulp.task('lint', function() {
     return gulp.src([SRC + '/**/*.js',
-                    //exclude JS files handled by browserify
-                    '!' + SRC + '/**/_lib',
-                    '!' + SRC + '/**/main_**.js',
-                    '!' + SRC + '/**/_*.js'])
+            //exclude JS files handled by browserify
+            '!' + SRC + '/**/_lib',
+            '!' + SRC + '/**/main_**.js',
+            '!' + SRC + '/**/_*.js'
+        ])
         .pipe(jshint())
         .pipe(jshint.reporter('jshint-stylish'))
         .pipe(gulp.dest(TEST))
@@ -79,49 +81,56 @@ gulp.task('lint', function() {
 
 
 
-gulp.task('browserify', function (done) {
+gulp.task('browserify', function(done) {
 
-  globby([SRC + '/**/main_**.js']).then(function(entries) {
+    globby([SRC + '/**/main_**.js']).then(function(entries) {
 
-      var tasks = entries.map(function(entry) {
+        // in case there is no browserfiable content yet...
+        if (entries.length > 0) {
+            var tasks = entries.map(function(entry) {
 
-          var entryAsString = String(entry);
-          var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length-3));
+                var entryAsString = String(entry);
+                var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length - 3));
+
+                return browserify({
+                        entries: entry,
+                        debug: true,
+                        // for standalone to work you need to feed it
+                        // the desired (unique!) global identifier
+                        standalone: filename
+                    })
+                    .bundle()
+                    .on('error', handleError('browserify'))
+                    .pipe(source(entry))
+                    .pipe(rename(function(path) {
+                        // TODO: replacing pathname like this seems crude - particularly
+                        // since it doesn't use the SRC variable
+                        path.dirname = path.dirname.replace('src/', '');
+                        path.basename = path.basename.replace('main_', '');
+                    }))
+                    .pipe(buffer())
+                    .pipe(sourcemaps.init({
+                        loadMaps: true
+                    }))
+                    // Add gulp plugins to the pipeline here.
+                    .pipe(sourcemaps.write('./'))
+                    .pipe(gulp.dest(TEST))
+                    .pipe(browserSync.stream());
+
+            });
+
+            es.merge(tasks)
+                .on('update', reload)
+                .on('end', done);
+        } else {
+            done();
+        }
 
 
-        return browserify({
-          entries: entry,
-          debug: true,
-          // for standalone to work you need to feed it
-          // the desired (unique!) global identifier
-          standalone: filename
-        })
-        .bundle()
-        .on('error', handleError('browserify'))
-        .pipe(source(entry))
-        .pipe(rename(function(path) {
-            // TODO: replacing pathname like this seems crude - particularly
-            // since it doesn't use the SRC variable
-            path.dirname = path.dirname.replace('src/', '');
-            path.basename = path.basename.replace('main_', '');
-        }))
-        .pipe(buffer())
-        .pipe(sourcemaps.init({loadMaps: true}))
-          // Add gulp plugins to the pipeline here.
-        .pipe(sourcemaps.write('./'))
-        .pipe(gulp.dest(TEST))
-        .pipe(browserSync.stream());
 
+    }).catch(function(err) {
+        handleError('browserify')
     });
-
-    es.merge(tasks)
-    .on('update', reload)
-    .on('end', done);
-
-
-  }).catch(function(err) {
-    handleError('browserify')
-  });
 
 });
 
@@ -129,12 +138,16 @@ gulp.task('browserify', function (done) {
 
 // Note that any final build process relies on content of /TEST being up-to-date
 gulp.task('uglify', ['browserify'], function() {
-  return gulp.src(TEST + '/**/*.js')
-    .pipe(uglify({output: {comments: /^!|@preserve|@license|@cc_on/i}}))
-    .pipe(rename(function(path) {
-        path.basename = path.basename += '.min';
-    }))
-    .pipe(gulp.dest(DIST));
+    return gulp.src(TEST + '/**/*.js')
+        .pipe(uglify({
+            output: {
+                comments: /^!|@preserve|@license|@cc_on/i
+            }
+        }))
+        .pipe(rename(function(path) {
+            path.basename = path.basename += '.min';
+        }))
+        .pipe(gulp.dest(DIST));
 });
 
 
@@ -145,7 +158,7 @@ gulp.task('uglify', ['browserify'], function() {
 // shunt html pages across to dist
 gulp.task('templates', function() {
     //TODO: avoid processing pages that haven't changed
-    return gulp.src(['./src/**/*.jade', '!./src/_templates/**' ])
+    return gulp.src(['./src/**/*.jade', '!./src/_templates/**'])
         .pipe(jade({
             pretty: true,
             basedir: './tests/_templates'
@@ -164,27 +177,29 @@ gulp.task('jade-watch', ['templates'], reload);
 // As with HTML you could choose to author CSS directly; but SASS rocks :)
 gulp.task('sass', function() {
 
-  return gulp.src(SRC + '/**/*.scss')
-    .pipe(sourcemaps.init())
-    .pipe(sass({
-        // outputStyle: 'compressed',
-        //includePaths : ['./_vendor']
-    }).on('error', sass.logError))
-    .pipe(sourcemaps.write())
-    .pipe(gulp.dest(TEST))
-    .pipe(browserSync.stream());
+    return gulp.src(SRC + '/**/*.scss')
+        .pipe(sourcemaps.init())
+        .pipe(sass({
+            // outputStyle: 'compressed',
+            //includePaths : ['./_vendor']
+        }).on('error', sass.logError))
+        .pipe(sourcemaps.write())
+        .pipe(gulp.dest(TEST))
+        .pipe(browserSync.stream());
 
 });
 
 
 
 gulp.task('minify-css', function() {
-  return gulp.src(TEST + '/**/*.css')
-    .pipe(cleanCSS({compatibility: 'ie9'}))
-    .pipe(rename(function(path) {
-        path.basename += '.min';
-    }))
-    .pipe(gulp.dest(DIST));
+    return gulp.src(TEST + '/**/*.css')
+        .pipe(cleanCSS({
+            compatibility: 'ie9'
+        }))
+        .pipe(rename(function(path) {
+            path.basename += '.min';
+        }))
+        .pipe(gulp.dest(DIST));
 });
 
 
@@ -195,31 +210,30 @@ gulp.task('minify-css', function() {
 
 // before serving content ensure it's all been built by running all tasks as devDependencies
 //TODO: run clean first
-gulp.task('serve',
-         ['assets', 'templates', 'sass', 'lint', 'browserify'],
-         function() {
+gulp.task('serve', ['assets', 'templates', 'sass', 'lint', 'browserify'],
+    function() {
 
-          browserSync.init({
+        browserSync.init({
             server: {
-              baseDir: TEST,
-              directory: true // displays navigable directory structure
+                baseDir: TEST,
+                directory: true // displays navigable directory structure
             },
             ghostmode: {
-              clicks: true,
-              forms: true,
-              scroll: true
+                clicks: true,
+                forms: true,
+                scroll: true
             }
 
-          });
+        });
 
-          gulp.watch(SRC + "/**/*.html", ['assets']);
-          gulp.watch(SRC + "/**/*.css", ['assets']);
-          gulp.watch(SRC + "/**/*.jade",  ['jade-watch']);
-          gulp.watch(SRC + "/**/*.scss", ['sass']);
-          gulp.watch(SRC + "/**/*.js", ['lint']);
-          gulp.watch(SRC + "/**/*.js", ['browserify']);
+        gulp.watch(SRC + "/**/*.html", ['assets']);
+        gulp.watch(SRC + "/**/*.css", ['assets']);
+        gulp.watch(SRC + "/**/*.jade", ['jade-watch']);
+        gulp.watch(SRC + "/**/*.scss", ['sass']);
+        gulp.watch(SRC + "/**/*.js", ['lint']);
+        gulp.watch(SRC + "/**/*.js", ['browserify']);
 
-});
+    });
 
 
 gulp.task('default', ['serve']);

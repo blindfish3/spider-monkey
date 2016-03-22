@@ -87,15 +87,15 @@ Vagrant.configure(2) do |config|
     # install global dependencies
     # have to be sudo to install these...
     sudo npm install -g gulp
+    sudo npm install -g gulp-cli
     sudo npm install -g node-sass
 
-    # install any additional dependencies here...
-    #TODO: install browsersync globally if necessary -
-    # ...though first test when running cmder as admin
-    # assume box is ready to install dev dependencies from package.json
 
-    #TODO: !!!!!!! change wkdir to /vagrant !!!!!!!
-    #sudo npm install
+    echo "cd /vagrant" >> /home/vagrant/.bashrc
+
+    # install local dependencies
+    cd /vagrant
+    sudo npm install
 
    SHELL
 end

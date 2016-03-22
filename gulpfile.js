@@ -17,7 +17,6 @@ var cleanCSS = require('gulp-clean-css');
 
 var jshint  = require('gulp-jshint');
 var browserify = require('browserify');
-var watchify = require('watchify');
 var uglify  = require('gulp-uglify');
 
 var browserSync = require('browser-sync').create();
@@ -90,13 +89,13 @@ gulp.task('browserify', function (done) {
           var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length-3));
 
 
-        return watchify(browserify({
+        return browserify({
           entries: entry,
           debug: true,
           // for standalone to work you need to feed it
           // the desired (unique!) global identifier
           standalone: filename
-        }))
+        })
         .bundle()
         .on('error', handleError('browserify'))
         .pipe(source(entry))

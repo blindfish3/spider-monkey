@@ -20,7 +20,7 @@ Vagrant.configure(2) do |config|
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
-   config.vm.network "forwarded_port", guest: 3000, host: 8080
+   config.vm.network "forwarded_port", guest: 3000, host: 8081
 
    # allow creation of symlinks on windows host
    # see: https://github.com/npm/npm/issues/7308#issuecomment-84214837
@@ -94,8 +94,8 @@ Vagrant.configure(2) do |config|
     echo "cd /vagrant" >> /home/vagrant/.bashrc
 
     # install local dependencies
-    cd /vagrant
-    sudo npm install
+    # cd /vagrant
+    # sudo npm install
 
    SHELL
 end

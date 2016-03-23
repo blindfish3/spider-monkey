@@ -36,5 +36,3 @@ global.P$ = new p5(function (p) {
     // };
 
 }, "sketch01");
-console.info("after");
-console.info(p5);

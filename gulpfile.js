@@ -10,6 +10,7 @@ var buffer = require('vinyl-buffer');
 var globby = require('globby');
 var rename = require('gulp-rename');
 var es = require('event-stream');
+var merge = require('utils-merge');
 
 var jade = require('gulp-jade');
 var sass = require('gulp-sass');
@@ -17,6 +18,7 @@ var cleanCSS = require('gulp-clean-css');
 
 var jshint = require('gulp-jshint');
 var browserify = require('browserify');
+var watchify = require('watchify');
 var uglify = require('gulp-uglify');
 
 var browserSync = require('browser-sync').create();
@@ -29,16 +31,23 @@ var TEST = './test';
 
 // - - - - - HELPERS - - - - - //
 //SOURCE: mlouro/gulpfile.js - https://gist.github.com/mlouro/8886076
-var handleError = function(task) {
+// added callback: this appears to stop a piped task from blocking and failing
+// even when the error is later fixed...
+var handleError = function(taskName, callback) {
     return function(err) {
 
         notify.onError({
-            message: task + ' failed, check the logs..'
+            message: taskName + ' failed, check the logs..'
         })(err);
 
-        gutil.log(gutil.colors.bgRed(task + ' error:'), gutil.colors.red(err));
+        gutil.log(gutil.colors.bgRed(taskName + ' error:'), gutil.colors.red(err));
+
+        if(callback) {
+            callback();
+        }
     };
 };
+
 
 
 // - - - - - TASKS - - - - - //
@@ -79,7 +88,9 @@ gulp.task('lint', function() {
         .pipe(browserSync.stream());
 })
 
-
+// based on:
+// http://fettblog.eu/gulp-browserify-multiple-bundles/
+// https://www.madetech.com/blog/making-multiple-browserify-bundles-with-gulp
 
 gulp.task('browserify', function(done) {
 
@@ -89,18 +100,18 @@ gulp.task('browserify', function(done) {
         if (entries.length > 0) {
             var tasks = entries.map(function(entry) {
 
-                var entryAsString = String(entry);
-                var filename = entryAsString.substring((entryAsString.indexOf('main_') + 5), (entryAsString.length - 3));
+                var filename = entry.substring((entry.indexOf('main_') + 5), (entry.length - 3));
 
-                return browserify({
+                // NOTE: this currently doesn't allow passing of watchify specific arguments
+                return watchify(browserify({
                         entries: entry,
                         debug: true,
                         // for standalone to work you need to feed it
-                        // the desired (unique!) global identifier
+                        // the desired (ideally unique!) global identifier
                         standalone: filename
-                    })
+                    }))
                     .bundle()
-                    .on('error', handleError('browserify'))
+                    .on('error', handleError('browserify', done))
                     .pipe(source(entry))
                     .pipe(rename(function(path) {
                         // TODO: replacing pathname like this seems crude - particularly
@@ -115,12 +126,11 @@ gulp.task('browserify', function(done) {
                     // Add gulp plugins to the pipeline here.
                     .pipe(sourcemaps.write('./'))
                     .pipe(gulp.dest(TEST))
-                    .pipe(browserSync.stream());
+                    // .pipe(browserSync.stream());
 
             });
 
             es.merge(tasks)
-                .on('update', reload)
                 .on('end', done);
         } else {
             done();
@@ -129,7 +139,8 @@ gulp.task('browserify', function(done) {
 
 
     }).catch(function(err) {
-        handleError('browserify')
+        handleError('browserify');
+        done();
     });
 
 });
@@ -156,14 +167,15 @@ gulp.task('uglify', ['browserify'], function() {
 // and for example to globally update paths to dependencies hosted on CDN servers
 // ...but you can author in plain old HTML if you so wish: the assets task will
 // shunt html pages across to dist
-gulp.task('templates', function() {
+gulp.task('templates', function(done) {
     //TODO: avoid processing pages that haven't changed
     return gulp.src(['./src/**/*.jade', '!./src/_templates/**'])
         .pipe(jade({
             pretty: true,
             basedir: './tests/_templates'
         }))
-        //TODO: fix this: reports errors, but doesn't allow watch task to continue
+        //TODO: fix this: reports errors, but doesn't allow jade task to run again
+        // possibly because gulp.watch is calling jade-watch...
         .on('error', handleError('jade'))
         .pipe(gulp.dest(TEST))
         .pipe(browserSync.stream());
@@ -209,7 +221,7 @@ gulp.task('minify-css', function() {
 
 
 // before serving content ensure it's all been built by running all tasks as devDependencies
-//TODO: run clean first
+//TODO: ideally run clean first
 gulp.task('serve', ['assets', 'templates', 'sass', 'lint', 'browserify'],
     function() {
 
